@@ -25,9 +25,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['googleoauths-websocket.onrender.com']
+ALLOWED_HOSTS = [
+    'googleoauths-websocket.onrender.com',
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0'
+    ]
 
 
 # Application definition
@@ -163,3 +168,8 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels.layers.InMemoryChannelLayer",  # Use "channels_redis.core.RedisChannelLayer" in production
     },
 }
+
+# Add CSRF trusted origins for secure forms
+CSRF_TRUSTED_ORIGINS = [
+    'https://googleoauths-websocket.onrender.com',
+]
