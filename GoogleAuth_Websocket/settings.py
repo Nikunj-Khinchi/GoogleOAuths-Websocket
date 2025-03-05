@@ -173,3 +173,9 @@ CHANNEL_LAYERS = {
 CSRF_TRUSTED_ORIGINS = [
     'https://googleoauths-websocket.onrender.com',
 ]
+
+# Update the GOOGLE_REDIRECT_URI setting to handle both environments
+if DEBUG:
+    GOOGLE_REDIRECT_URI = "http://127.0.0.1:8000/google/callback/"
+else:
+    GOOGLE_REDIRECT_URI = "https://googleoauths-websocket.onrender.com/google/callback/"
