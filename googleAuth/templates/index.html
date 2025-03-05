@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Drive & Chat</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Left side: Google Drive */
+        .google-container {
+            width: 50%;
+            padding: 20px;
+            background: #f4f4f4;
+            overflow-y: auto;
+            border-right: 2px solid #ddd;
+        }
+
+        .files-container {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        /* Right side: Chat */
+        .chat-container {
+            width: 50%;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+        }
+
+        /* Chat Box */
+        #chat-box {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: #f9f9f9;
+            margin-bottom: 10px;
+            max-height: 400px;
+        }
+
+        .message {
+            padding: 5px;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+
+        .my-message {
+            background: #dcf8c6;
+            text-align: right;
+        }
+
+        .other-message {
+            background: #ececec;
+            text-align: left;
+        }
+
+        #message-input {
+            width: 80%;
+            padding: 5px;
+        }
+
+        button {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #3367D6;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        ul li {
+            background: #eee;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        ul li a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+
+        ul li a:hover {
+            color: #4285F4;
+        }
+
+        /* Success Popup */
+        .popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .popup button {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 999;
+        }
+
+
+        h1,
+        h2,
+        h3 {
+            color: #333;
+        }
+
+        .user-info {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .user-info img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 2px solid #4285F4;
+        }
+
+        button {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #3367D6;
+        }
+
+        .upload-section,
+        .files-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        input[type="file"] {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Google Drive Container (Left Side) -->
+    <div class="google-container">
+        <h1>Google Drive Integration</h1>
+
+        {% if user_info %}
+        <div class="user-info">
+            <img src="{{ user_info.picture }}" alt="Profile Picture">
+            <h2>Welcome, {{ user_info.name }}</h2>
+            <p>Email: {{ user_info.email }}</p>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="upload-section">
+            <h3>Upload File to Google Drive</h3>
+            <input type="hidden" id="csrf-token" value="{{ csrf_token }}">
+            <input type="file" id="file-input">
+            <button class="upload-btn" onclick="uploadFile()">Upload</button>
+        </div>
+
+        <div class="files-section">
+            <h3>Your Google Drive Files</h3>
+            <button class="fetch-btn" onclick="fetchFiles()">Fetch Files</button>
+            <div class="files-container">
+                <ul id="file-list"></ul>
+            </div>
+        </div>
+
+        {% else %}
+        <button class="login-btn" onclick="window.location.href='/google/login/'">Login with Google</button>
+        {% endif %}
+    </div>
+
+    <div class="popup-overlay" id="popup-overlay"></div>
+    <div class="popup" id="popup">
+        <h3>File Uploaded Successfully!</h3>
+        <button onclick="closePopup()">OK</button>
+    </div>
+
+
+    <!-- Chat Container (Right Side) -->
+    <div class="chat-container">
+        <h2>Live Chat</h2>
+        <div id="chat-box"></div>
+        <input type="text" id="message-input" placeholder="Type a message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+
+        // Function to Show the Popup
+        function showPopup() {
+            document.getElementById("popup-overlay").style.display = "block";
+            document.getElementById("popup").style.display = "block";
+        }
+
+        // Function to Close the Popup
+        function closePopup() {
+            document.getElementById("popup-overlay").style.display = "none";
+            document.getElementById("popup").style.display = "none";
+        }
+
+
+
+        // Get CSRF Token
+        function getCSRFToken() {
+            return document.getElementById("csrf-token").value;
+        }
+
+        // Logout Function
+        function logout() {
+            window.location.href = "/google/logout/";
+        }
+
+        // Upload File to Google Drive
+        function uploadFile() {
+            let fileInput = document.getElementById("file-input");
+            if (fileInput.files.length === 0) {
+                alert("Please select a file to upload.");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            $.ajax({
+                url: "/google/drive/upload/",
+                type: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    "X-CSRFToken": getCSRFToken()
+                },
+                success: function (response) {
+                    showPopup(); // Show success popup
+                    fileInput.value = ""; // Clear the file input
+                    fetchFiles();  // Refresh file list
+                },
+                error: function (error) {
+                    alert("Error uploading file.");
+                }
+            });
+        }
+
+        // Fetch Files from Google Drive
+        function fetchFiles() {
+            $.ajax({
+                url: "/google/drive/files/",
+                type: "GET",
+                success: function (response) {
+                    let fileList = $("#file-list");
+                    fileList.empty();
+
+                    let files = response.files; // Get all files
+                    let displayFiles = files.slice(0, 10); // Only show top 10 initially
+
+                    displayFiles.forEach(file => {
+                        fileList.append(`<li><a href="https://drive.google.com/file/d/${file.id}/view" target="_blank">${file.name}</a></li>`);
+                    });
+
+                    // Append remaining files for scrolling
+                    files.slice(10).forEach(file => {
+                        fileList.append(`<li><a href="https://drive.google.com/file/d/${file.id}/view" target="_blank">${file.name}</a></li>`);
+                    });
+                },
+                error: function (error) {
+                    alert("Error fetching files.");
+                }
+            });
+        }
+
+        // Function to generate a unique guest username
+        function generateGuestUsername() {
+            return "Guest-" + Math.floor(1000 + Math.random() * 9000);  // Example: Guest-4573
+        }
+
+        // Check if the user is logged in; otherwise, assign a unique guest name
+        let username = "{{ user_info.name|default:'' }}".trim();
+
+        // If the user is not logged in, generate or retrieve a unique guest username
+        if (!username) {
+            if (!sessionStorage.getItem("guestUsername")) {
+                sessionStorage.setItem("guestUsername", generateGuestUsername());
+            }
+            username = sessionStorage.getItem("guestUsername");
+        }
+
+        console.log("Assigned Username:", username);  // Debugging log to check assigned username
+
+        // WebSocket Connection
+        const chatSocket = new WebSocket(
+            (window.location.protocol === "https:" ? "wss://" : "ws://") + window.location.host + "/ws/chat/"
+        );
+
+
+        chatSocket.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            const chatBox = document.getElementById("chat-box");
+            const messageElement = document.createElement("div");
+
+            messageElement.textContent = `${data.username}: ${data.message}`;
+            messageElement.classList.add("message");
+            messageElement.classList.add(data.username === username ? "my-message" : "other-message");
+
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+
+        // Send Message to WebSocket
+        function sendMessage() {
+            const messageInput = document.getElementById("message-input");
+            const message = messageInput.value.trim();
+
+            if (message) {
+                chatSocket.send(JSON.stringify({
+                    "username": username,
+                    "message": message
+                }));
+                messageInput.value = "";  // Clear input after sending
+            }
+        }
+    </script>
+
+</body>
+
+</html>
